@@ -1,0 +1,88 @@
+#!/bin/bash
+# dvd-mode - choose what the DVD auto-ripper does with the next discs
+CONF="${DVD_AUTO_RIP_CONF:-/etc/dvd-auto-rip.conf}"
+if [[ -f "$CONF" ]]; then
+    # shellcheck disable=SC1090
+    source "$CONF"
+fi
+MODE_FILE="${MODE_FILE:-${MEDIA:-/media}/_scratch/dvd-automation/mode}"
+mkdir -p "$(dirname "$MODE_FILE")"
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  dvd-mode                                   show the current mode
+  dvd-mode movie                             rip discs as movies
+  dvd-mode tv "Show Name" <season> [first-episode] [min-minutes max-minutes] [--chapters]
+                                             rip discs as TV episodes
+
+Examples:
+  dvd-mode tv "The Office (US)" 1            normal 22-minute episodes, one per disc title
+  dvd-mode tv "Bluey" 1 1 4 20               short episodes, one per disc title
+  dvd-mode tv "Bluey" 1 1 4 20 --chapters   all episodes inside ONE long title:
+                                             every 4-20 minute chapter becomes an episode
+USAGE
+}
+
+# pull out the --chapters flag wherever it appears
+SPLIT=0
+args=()
+for a in "$@"; do
+    if [[ "$a" == "--chapters" ]]; then SPLIT=1; else args+=("$a"); fi
+done
+set -- "${args[@]}"
+
+show_status() {
+    local MODE="movie" SHOW="" SEASON="" NEXT_EPISODE="" EP_MIN_SECONDS="" EP_MAX_SECONDS="" SPLIT_CHAPTERS=""
+    if [[ -f "$MODE_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$MODE_FILE"
+    fi
+    if [[ "$MODE" == "tv" ]]; then
+        printf 'TV mode: %s, season %s, next disc starts at episode %s\n' "$SHOW" "$SEASON" "$NEXT_EPISODE"
+        if [[ "$SPLIT_CHAPTERS" == "1" ]]; then
+            echo "Episodes are CHAPTERS inside one long title"
+        fi
+        if [[ -n "$EP_MIN_SECONDS" && -n "$EP_MAX_SECONDS" ]]; then
+            printf 'Episode length filter: %s to %s minutes\n' "$((EP_MIN_SECONDS / 60))" "$((EP_MAX_SECONDS / 60))"
+        elif [[ "$SPLIT_CHAPTERS" == "1" ]]; then
+            echo "Episode length filter: default (3 to 60 minutes)"
+        else
+            echo "Episode length filter: default (15 to 70 minutes)"
+        fi
+    else
+        echo "Movie mode"
+    fi
+}
+
+case "${1:-status}" in
+    movie)
+        echo "MODE=movie" > "$MODE_FILE"
+        show_status
+        ;;
+    tv)
+        if [[ $# -lt 3 || $# -gt 6 || $# -eq 5 ]]; then usage; exit 1; fi
+        if [[ ! "$3" =~ ^[0-9]+$ || ! "${4:-1}" =~ ^[0-9]+$ ]]; then
+            echo "Season and episode must be numbers."; exit 1
+        fi
+        if [[ $# -eq 6 ]]; then
+            if [[ ! "$5" =~ ^[0-9]+$ || ! "$6" =~ ^[0-9]+$ ]] || (( 10#$5 >= 10#$6 )); then
+                echo "min-minutes and max-minutes must be numbers, with min smaller than max."; exit 1
+            fi
+        fi
+        {
+            echo "MODE=tv"
+            printf 'SHOW=%q\n' "$2"
+            echo "SEASON=$((10#$3))"
+            echo "NEXT_EPISODE=$((10#${4:-1}))"
+            if [[ $# -eq 6 ]]; then
+                echo "EP_MIN_SECONDS=$((10#$5 * 60))"
+                echo "EP_MAX_SECONDS=$((10#$6 * 60))"
+            fi
+            if [[ "$SPLIT" -eq 1 ]]; then echo "SPLIT_CHAPTERS=1"; fi
+        } > "$MODE_FILE"
+        show_status
+        ;;
+    status) show_status ;;
+    *) usage; exit 1 ;;
+esac

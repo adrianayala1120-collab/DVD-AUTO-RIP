@@ -1,0 +1,13 @@
+[Unit]
+Description=Automatic DVD ripper (watches the optical drive)
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=@BINDIR@/dvd-watcher.sh
+Restart=always
+RestartSec=10
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

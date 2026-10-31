@@ -1,0 +1,19 @@
+# /etc/dvd-auto-rip.conf - optional settings for dvd-auto-rip.
+# Uncomment and change only what you need; everything shown is the default.
+# This file is read by every script, so changes apply to the next disc.
+
+# --- Where things live ---
+#MEDIA=/media                  # root of your media storage
+#DRIVE=/dev/sr0                # the optical drive
+#MOVIEDIR="$MEDIA/Movies"      # movies are saved here
+#TVDIR="$MEDIA/TV Shows"       # TV episodes are saved here
+
+# --- Encoding ---
+#HB_PRESET=medium              # x265 preset: faster = quicker/larger, slower = smaller
+#HB_RF=22                      # quality (lower = better and larger; 18-24 is sensible)
+
+# --- Behaviour ---
+#KEEP_ORIGINAL=0               # 1 = keep the raw MakeMKV rips (up to ~8 GB per disc)
+#MIN_FREE_GB=15                # refuse to start with less free scratch space
+#MIN_TITLE_SECONDS=3600        # movies: the main feature must be at least this long
+#DURATION_TOLERANCE_PCT=3      # allowed difference between source and encoded length
